@@ -72,7 +72,7 @@ SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -DJSON_IS_AMALGAMATION " ) # for the j
 MESSAGE( STATUS "Boost_REGEX_LIBRARY: ${Boost_REGEX_LIBRARY}" )
 
 ADD_ARNOLD_CXX_PLUGIN( bb_AlembicArnoldProcedural ProcMain.cpp ${H_FILES} ${CXX_FILES} )
-TARGET_LINK_LIBRARIES( bb_AlembicArnoldProcedural ${CORE_LIBS})
+TARGET_LINK_LIBRARIES( bb_AlembicArnoldProcedural ${CORE_LIBS} ${Boost_REGEX_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${Boost_THREAD_LIBRARY})
 
 ALEMBIC_SET_PROPERTIES(bb_AlembicArnoldProcedural)
 

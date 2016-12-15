@@ -45,7 +45,7 @@
 #include "json/json.h"
 #include "pystring.h"
 
-#include <hdf5.h>
+// #include <hdf5.h>
 
 #include <Alembic/AbcGeom/All.h>
 #include <Alembic/AbcCoreHDF5/All.h>
@@ -693,7 +693,7 @@ int ProcInit( struct AtNode *node, void **user_ptr )
     w_lock.lock();
     IObject root;
 
-    H5dont_atexit();
+    // H5dont_atexit();
     
     FileCache::iterator I = g_fileCache.find(args->filename);
     if (I != g_fileCache.end())
