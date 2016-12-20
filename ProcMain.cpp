@@ -758,8 +758,33 @@ int ProcInit( struct AtNode *node, void **user_ptr )
 
 int ProcCleanup( void *user_ptr )
 {
-    delete reinterpret_cast<ProcArgs*>( user_ptr );
-    return 1;
+    // delete reinterpret_cast<ProcArgs*>( user_ptr );
+    // return 1;
+
+    AiMsgDebug("ProcCleanup");
+    //delete reinterpret_cast<ProcArgs*>( user_ptr );
+    ProcArgs * args = reinterpret_cast<ProcArgs*>( user_ptr );
+    if(args != NULL)
+    {
+
+        // if(args->createdNodes->getNumNodes() > 0)
+        // {
+        //     caches *g_cache = reinterpret_cast<caches*>( AiProceduralGetPluginData(args->proceduralNode) );
+
+        //     std::string fileCacheId = g_cache->g_fileCache->getHash(args->filename, args->shaders, args->displacements, args->attributesRoot, args->frame);
+        //     g_cache->g_fileCache->addCache(fileCacheId, args->createdNodes);
+        // }
+
+        args->shaders.clear();
+        args->displacements.clear();
+        args->userAttributes.clear();
+        args->overrides.clear();
+        // loop of ginstances first
+        
+        args->createdNodes.clear();
+        delete args;
+    }
+    AiMsgDebug("ProcCleanup done");
 }
 
 //-*************************************************************************

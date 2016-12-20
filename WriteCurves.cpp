@@ -484,12 +484,13 @@ AtNode * ProcessCurvesBase(
             for ( size_t vId = 0; vId < pSize; ++vId )
             {
                 
+                // point position at sample beginning
                 Alembic::Abc::V3f posAtOpen = ((*v3ptr)[vId] + (*velptr)[vId] * scaleVelocity *-timeoffset);
                 vlist[3*vId + 0] = posAtOpen.x;
                 vlist[3*vId + 1] = posAtOpen.y;
                 vlist[3*vId + 2] = posAtOpen.z;
 
-
+                // point position at sample end
                 Alembic::Abc::V3f posAtEnd = ((*v3ptr)[vId] + (*velptr)[vId] * scaleVelocity *(1.0f-timeoffset));
                 vlist[3*vId + 3*pSize + 0] = posAtEnd.x;
                 vlist[3*vId + 3*pSize + 1] = posAtEnd.y;
@@ -514,7 +515,7 @@ AtNode * ProcessCurvesBase(
     std::vector<unsigned int> radidxs;
 
     ProcessIndexedBuiltinParam(
-            ps.getWidthsParam(),
+            ps.getWidthsParam(), // getWidthsParam looks for "width" as a float array
             singleSampleTimes,
             fullradlist,
             radidxs,
@@ -529,38 +530,78 @@ AtNode * ProcessCurvesBase(
     AtArray* curveNumPoints = AiArrayAllocate( numCurves , 1, AI_TYPE_UINT);  
 
     unsigned int w_end = 0;
+    size_t current_crv_pos_idx = 0;
 
-    for ( size_t currentCurve = 0; currentCurve < numCurves ;
-          ++currentCurve )
+
+    //loop the samples
+
+    for (size_t s=0;s < numSampleTimes; s++)
     {
-        unsigned int c_verts = nVertices->get()[currentCurve];
-
-        AiArraySetUInt(curveNumPoints, currentCurve, c_verts);
-
-        // as splines require two less vtx widths per curve we crop out the 
-        // second and second to last width before outputing to radlist vector
-        //
-        // This is actually incorrect this is just because the first and last 
-        // vtx are not expected to be rendered in a b-spline. 
-        // We need to change it so we add a vtx to the start/end rather than 
-        // removing data from the radius
-        
-        if ( !fullradlist.empty() )
+        for ( size_t currentCurve = 0; currentCurve < numCurves ;
+              ++currentCurve )
         {
-          unsigned int w_start = w_end;
-          w_end = (currentCurve+1)*c_verts;
+            unsigned int c_verts = nVertices->get()[currentCurve];
 
-          std::vector<float> this_range(fullradlist.begin() + w_start,
-                                        fullradlist.begin() + w_end);
+            // need to add 2 extra points here
+            AiArraySetUInt(curveNumPoints, currentCurve, (c_verts+2));
 
-          for ( size_t r=0; r < this_range.size(); ++r )
-          {
-              if ( r != 1 && r !=this_range.size()-2 )
-                radlist.push_back(this_range[r]);
-          }
+            // append duplicate first and last point for this curve
+            // first pos
+            Alembic::Abc::V3f firstPos;
+            firstPos.x = vlist[current_crv_pos_idx];
+            firstPos.y = vlist[current_crv_pos_idx+1];
+            firstPos.z = vlist[current_crv_pos_idx+2];
+            
+            size_t last_x_idx = current_crv_pos_idx + ((c_verts-1)*3);
+
+            Alembic::Abc::V3f lastPos;
+            lastPos.x = vlist[last_x_idx];
+            lastPos.y = vlist[last_x_idx+1];
+            lastPos.z = vlist[last_x_idx+2];
+
+            vlist.insert(vlist.begin()+current_crv_pos_idx, firstPos.x);
+            vlist.insert(vlist.begin()+current_crv_pos_idx+1, firstPos.y);
+            vlist.insert(vlist.begin()+current_crv_pos_idx+2, firstPos.z);
+
+            current_crv_pos_idx += ((c_verts+1)*3);
+            
+            vlist.insert(vlist.begin()+current_crv_pos_idx, lastPos.x);
+            vlist.insert(vlist.begin()+current_crv_pos_idx+1, lastPos.y);
+            vlist.insert(vlist.begin()+current_crv_pos_idx+2, lastPos.z);
+            
+            current_crv_pos_idx += 3;
+
+            // as splines require two less vtx widths per curve we crop out the 
+            // second and second to last width before outputing to radlist vector
+            //
+            // This is actually incorrect this is just because the first and last 
+            // vtx are not expected to be rendered in a b-spline. 
+            // We need to change it so we add a vtx to the start/end rather than 
+            // removing data from the radius
+            
+            // process widths if they have baked attributes on the curve
+            if ( !fullradlist.empty() )
+            {
+              unsigned int w_start = w_end;
+              w_end = (currentCurve+1)*c_verts;
+
+              std::vector<float> this_range(fullradlist.begin() + w_start,
+                                            fullradlist.begin() + w_end);
+
+              for ( size_t r=0; r < this_range.size(); ++r )
+              {
+                  // if ( r != 1 && r !=this_range.size()-2 )
+                    radlist.push_back(this_range[r]);
+              }
+            }
+
+            // TODO otherwise lerp the root width -> tip width 
+
         }
-
+        // vlist.resize(vlist.size()+(numCurves*2));
+        
     }
+
 
     AtArray* curveWidths;
 
@@ -575,32 +616,44 @@ AtNode * ProcessCurvesBase(
       }
 
     }
-    else
-    {
-      // write out as uniform values, need to be more clever 
-      // with this, at the moment we assume all the curves are 
-      // the same number of verts
-      curveWidths = AiArrayAllocate(static_cast<unsigned int>( pSize-(numCurves*2) ),
-                                           1, AI_TYPE_FLOAT); 
 
-      for ( size_t PId = 0; PId < pSize-(numCurves*2) ; ++PId ) 
-      {
-          AiArraySetFlt(curveWidths, PId, radiusCurve);
-      }
-    }
+    // else
+    // {
+    //   // write out as uniform values, need to be more clever 
+    //   // with this, at the moment we assume all the curves are 
+    //   // the same number of verts
+    //   curveWidths = AiArrayAllocate(static_cast<unsigned int>( pSize-(numCurves*2) ),
+    //                                        1, AI_TYPE_FLOAT); 
+
+    //   for ( size_t PId = 0; PId < (pSize-(numCurves*2)) ; PId++ ) 
+    //   {
+    //       AiArraySetFlt(curveWidths, PId, radiusCurve);
+    //   }
+
+    // }
+
+    // if(!finalRadius.empty())
+    //     AiNodeSetArray(curvesNode, "radius",
+    //             AiArrayConvert( finalRadius.size() ,
+    //                     1, AI_TYPE_FLOAT, (void*)(&(finalRadius[0]))
+    //                             ));
+
+    // else
+    //     AiNodeSetArray(curvesNode, "radius", AiArray( 1 , 1, AI_TYPE_FLOAT, radiusCurves));
+
 
 
     // TODO suface->curve UVs
 
-    // std::vector<float> uvlist;
-    // std::vector<unsigned int> uvidxs;
+    std::vector<float> uvlist;
+    std::vector<unsigned int> uvidxs;
 
-    // ProcessIndexedBuiltinParam(
-    //         cs.getUVsParam(), // getUVsPAram looks for "uvs" as a float2 array (V2f), currently not exported from AbcExport
-    //         singleSampleTimes,
-    //         uvlist,
-    //         uvidxs,
-    //         2);   
+    ProcessIndexedBuiltinParam(
+            ps.getUVsParam(), // getUVsParam looks for "uvs" as a float2 array (V2f), currently not exported from AbcExport
+            singleSampleTimes,
+            uvlist,
+            uvidxs,
+            2);   
 
     AtNode* curvesNode = AiNode( "curves" );
 
@@ -704,7 +757,11 @@ AtNode * ProcessCurvesBase(
                   sampleTimes.size(), AI_TYPE_FLOAT, (void*)(&(vlist[0]))));
 
     // radius
-    AiNodeSetArray(curvesNode, "radius",curveWidths);
+    if ( !radlist.empty() )
+        AiNodeSetArray(curvesNode, "radius",curveWidths);
+    else
+        AiNodeSetArray(curvesNode, "radius",AiArray( 1 , 1, AI_TYPE_FLOAT, radiusCurve));
+
 
     if ( sampleTimes.size() > 1 )
     {
