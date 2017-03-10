@@ -221,6 +221,12 @@ ProcArgs::ProcArgs( const char * paramStr )
         }
         
     }
+
+
+    AtNode* options = AiUniverseGetOptions();
+    referenceTime = AiNodeGetFlt(options, "reference_time");
+
+    frame -= referenceTime;
 }
 
 

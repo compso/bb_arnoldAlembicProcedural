@@ -84,6 +84,7 @@ struct ProcArgs
     double fps;
     double shutterOpen;
     double shutterClose;
+    double referenceTime;
     
     bool excludeXform;
     
