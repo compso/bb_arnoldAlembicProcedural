@@ -240,7 +240,7 @@ AtNode * ProcessPolyMeshBase(
               if(reader.parse(valueSample->get()[0], jtags))
                 for( Json::ValueIterator itr = jtags.begin() ; itr != jtags.end() ; itr++ )
                 { 
-                  AiMsgDebug("[ABC] Tag '%s' added to tags list",jtags[itr.key().asUInt()].asString());
+                  AiMsgDebug("[ABC] Tag '%s' added to tags list",jtags[itr.key().asUInt()].asString().c_str());
                   tags.push_back(jtags[itr.key().asUInt()].asString());
                 }
             }
@@ -704,20 +704,19 @@ AtNode * ProcessPolyMeshBase(
                   faceSetSample.getFaces()->get() +
                           faceSetSample.getFaces()->size() );
 
-          std::vector<bool> faceVisArray;
-          faceVisArray.reserve( nsides.size() );
+          bool *faceVisArray = new bool(nsides.size());
 
+          
           for ( int i = 0; i < (int) nsides.size(); ++i )
           {
-              faceVisArray.push_back(
-                      facesToKeep.find( i ) != facesToKeep.end() );
+              faceVisArray[i] = facesToKeep.find( i ) != facesToKeep.end();
           }
 
           if ( AiNodeDeclare( meshNode, "face_visibility", "uniform BOOL" ) )
           {
               AiNodeSetArray( meshNode, "face_visibility",
-                      AiArrayConvert( faceVisArray.size(), 1, AI_TYPE_BOOLEAN,
-                              (void *) &faceVisArray[0] ) );
+                      AiArrayConvert( nsides.size(), 1, AI_TYPE_BOOLEAN,
+                              faceVisArray ) );
           }
       }
     }

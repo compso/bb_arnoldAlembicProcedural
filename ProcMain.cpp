@@ -45,7 +45,7 @@
 #include "json/json.h"
 #include "pystring.h"
 
-#include <hdf5.h>
+// #include <hdf5.h>
 
 #include <Alembic/AbcGeom/All.h>
 #include <Alembic/AbcCoreHDF5/All.h>
@@ -693,7 +693,7 @@ int ProcInit( struct AtNode *node, void **user_ptr )
     w_lock.lock();
     IObject root;
 
-    H5dont_atexit();
+    // H5dont_atexit();
     
     FileCache::iterator I = g_fileCache.find(args->filename);
     if (I != g_fileCache.end())
@@ -758,8 +758,33 @@ int ProcInit( struct AtNode *node, void **user_ptr )
 
 int ProcCleanup( void *user_ptr )
 {
-    delete reinterpret_cast<ProcArgs*>( user_ptr );
-    return 1;
+    // delete reinterpret_cast<ProcArgs*>( user_ptr );
+    // return 1;
+
+    AiMsgDebug("ProcCleanup");
+    //delete reinterpret_cast<ProcArgs*>( user_ptr );
+    ProcArgs * args = reinterpret_cast<ProcArgs*>( user_ptr );
+    if(args != NULL)
+    {
+
+        // if(args->createdNodes->getNumNodes() > 0)
+        // {
+        //     caches *g_cache = reinterpret_cast<caches*>( AiProceduralGetPluginData(args->proceduralNode) );
+
+        //     std::string fileCacheId = g_cache->g_fileCache->getHash(args->filename, args->shaders, args->displacements, args->attributesRoot, args->frame);
+        //     g_cache->g_fileCache->addCache(fileCacheId, args->createdNodes);
+        // }
+
+        args->shaders.clear();
+        args->displacements.clear();
+        args->userAttributes.clear();
+        args->overrides.clear();
+        // loop of ginstances first
+        
+        args->createdNodes.clear();
+        delete args;
+    }
+    AiMsgDebug("ProcCleanup done");
 }
 
 //-*************************************************************************
