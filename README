@@ -1,3 +1,15 @@
+###############################
+# bb Alembic Arnold Procedural 
+###############################
+
+v 0.9.7
+
+* get frame motion start
+
+--------------------------------
+			USAGE
+--------------------------------
+
 AlembicArnoldProcedural usage:
 
 -filename /path/to/some/archive.abc
@@ -86,7 +98,6 @@ The procedural will detect various custom user attributes as json dictionaries. 
 
 
 STILL TO DO:
--AbcGeom::ICurves
 -AbcGeom::INuPatch
 -AbcGeom::ICamera
 
