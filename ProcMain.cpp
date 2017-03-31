@@ -310,18 +310,27 @@ int ProcInit( struct AtNode *node, void **user_ptr )
     /* Load shaders file */
     // FIXME: is there a way of renaming the nodes from this load?
     //        if not maybe we should look in to having the shaders be in an abc file instead
+
     WriteLock w_lock(myLock);
     if (AiNodeLookUpUserParameter(node, "assShaders") !=NULL )
     {
         const char* assfile = AiNodeGetStr(node, "assShaders");
         if(*assfile != 0)
         {
-            // if we don't find the ass file, we can load it. This avoid multiple load of the same file.
-            if(std::find(g_loadedAss.begin(), g_loadedAss.end(), std::string(assfile)) == g_loadedAss.end())
+
+            if(AiASSLoad(assfile, AI_NODE_SHADER) == 0)
             {
-                if(AiASSLoad(assfile, AI_NODE_SHADER) == 0)
-                    g_loadedAss.push_back(std::string(assfile));
-            }            
+                AiMsgInfo( "[ABC] Loaded shaders from %s", assfile); 
+            }
+            // if we don't find the ass file, we can load it. This avoid multiple load of the same file.
+            // if(std::find(g_loadedAss.begin(), g_loadedAss.end(), std::string(assfile)) == g_loadedAss.end())
+            // {
+            //     if(AiASSLoad(assfile, AI_NODE_SHADER) == 0)
+            //     {
+
+            //         g_loadedAss.push_back(std::string(assfile));
+            //     }
+            // }            
         }
     }
     w_lock.unlock();
