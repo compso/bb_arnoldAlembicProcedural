@@ -2,6 +2,10 @@
 # bb Alembic Arnold Procedural 
 ###############################
 
+v 0.9.8
+
+* don't check for ass file already being sourced
+
 v 0.9.7
 
 * get frame motion start
