@@ -540,6 +540,7 @@ AtNode * ProcessPolyMeshBase(
 
             if (attribute=="smoothing" 
               || attribute=="opaque" 
+              || attribute=="visibility" 
               || attribute=="subdiv_iterations" 
               || attribute=="subdiv_type"
               || attribute=="subdiv_adaptive_metric"
