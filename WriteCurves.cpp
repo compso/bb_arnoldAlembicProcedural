@@ -162,7 +162,7 @@ namespace
 AtNode * ProcessCurvesBase(
         ICurves & prim, ProcArgs & args,
         SampleTimeSet & sampleTimes,
-        std::vector<AtPoint> & vidxs,
+        std::vector<AtVector> & vidxs,
         std::vector<float> & radius,
         MatrixSampleMap * xformSamples)
 {
@@ -362,7 +362,7 @@ AtNode * ProcessCurvesBase(
           Json::Value jtags;
           Json::Reader reader;
 
-          if(reader.parse( AiNodeGetStr(instanceNode, "tags"), jtags))
+          if(reader.parse( AiNodeGetStr(instanceNode, "tags").c_str(), jtags))
           {
             for( Json::ValueIterator itr = jtags.begin() ; itr != jtags.end() ; itr++ )
             { 
@@ -391,7 +391,7 @@ AtNode * ProcessCurvesBase(
           else
           {
             AtArray* shaders = AiNodeGetArray(args.proceduralNode, "shader");
-            if (shaders->nelements != 0)
+            if ( AiArrayGetNumElements(shaders) != 0)
                AiNodeSetArray(instanceNode, "shader", AiArrayCopy(shaders));
           }
         } // end shader assignment
@@ -749,7 +749,7 @@ AtNode * ProcessCurvesBase(
 
     // the point positions for the curves
     // AiNodeSetArray(curvesNode, "points",
-    //       AiArrayConvert(vidxs.size(), 1, AI_TYPE_POINT,
+    //       AiArrayConvert(vidxs.size(), 1, AI_TYPE_VECTOR,
     //               (void*)&vidxs[0]));
 
     AiNodeSetArray(curvesNode, "points",
@@ -818,7 +818,7 @@ AtNode * ProcessCurvesBase(
           Json::Value jtags;
           Json::Reader reader;
 
-          if(reader.parse( AiNodeGetStr(curvesNode, "tags"), jtags))
+          if(reader.parse( AiNodeGetStr(curvesNode, "tags").c_str(), jtags))
           {
             for( Json::ValueIterator itr = jtags.begin() ; itr != jtags.end() ; itr++ )
             { 
@@ -840,7 +840,7 @@ AtNode * ProcessCurvesBase(
             else
             {
               AtArray* shaders = AiNodeGetArray(args.proceduralNode, "shader");
-              if (shaders->nelements != 0)
+              if ( AiArrayGetNumElements(shaders) != 0)
                  AiNodeSetArray(curvesNode, "shader", AiArrayCopy(shaders));
             }
         } // end shader assignment
@@ -866,7 +866,7 @@ void ProcessCurves( ICurves &curves, ProcArgs &args,
         MatrixSampleMap * xformSamples)
 {
     SampleTimeSet sampleTimes;
-    std::vector<AtPoint> vidxs;
+    std::vector<AtVector> vidxs;
     std::vector<float> radius;
     
     AtNode * curvesNode = ProcessCurvesBase(

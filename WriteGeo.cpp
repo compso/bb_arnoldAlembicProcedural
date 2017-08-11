@@ -167,7 +167,7 @@ template <typename primT>
 AtNode * ProcessPolyMeshBase(
         primT & prim, ProcArgs & args,
         SampleTimeSet & sampleTimes,
-        std::vector<AtUInt32> & vidxs,
+        std::vector<uint32_t> & vidxs,
         int subdiv_iterations,
         MatrixSampleMap * xformSamples, 
         const std::string & facesetName = "" )
@@ -372,7 +372,7 @@ AtNode * ProcessPolyMeshBase(
             Json::Value jtags;
             Json::Reader reader;
 
-            if(reader.parse( AiNodeGetStr(instanceNode, "tags"), jtags))
+            if(reader.parse( AiNodeGetStr(instanceNode, "tags").c_str(), jtags))
             {
               for( Json::ValueIterator itr = jtags.begin() ; itr != jtags.end() ; itr++ )
               { 
@@ -401,7 +401,7 @@ AtNode * ProcessPolyMeshBase(
           else
           {
             AtArray* shaders = AiNodeGetArray(args.proceduralNode, "shader");
-            if (shaders->nelements != 0)
+            if ( AiArrayGetNumElements(shaders) != 0)
                AiNodeSetArray(instanceNode, "shader", AiArrayCopy(shaders));
           }
         } // end shader assignment
@@ -414,7 +414,7 @@ AtNode * ProcessPolyMeshBase(
 
     } // end makeinstance
     
-    std::vector<AtByte> nsides;
+    std::vector<uint32_t> nsides;
     std::vector<float> vlist;
 
     std::vector<float> uvlist;
@@ -445,7 +445,7 @@ AtNode * ProcessPolyMeshBase(
                   return NULL;
               }
 
-              nsides.push_back( (AtByte) n );
+              nsides.push_back( (uint32_t) n );
             }
 
             size_t vidxSize = sample.getFaceIndices()->size();
@@ -782,7 +782,7 @@ AtNode * ProcessPolyMeshBase(
           Json::Value jtags;
           Json::Reader reader;
 
-          if(reader.parse( AiNodeGetStr(meshNode, "tags"), jtags))
+          if(reader.parse( AiNodeGetStr(meshNode, "tags").c_str(), jtags))
           {
             for( Json::ValueIterator itr = jtags.begin() ; itr != jtags.end() ; itr++ )
             { 
@@ -804,7 +804,7 @@ AtNode * ProcessPolyMeshBase(
         else
         {
           AtArray* shaders = AiNodeGetArray(args.proceduralNode, "shader");
-          if (shaders->nelements != 0)
+          if ( AiArrayGetNumElements(shaders) != 0)
              AiNodeSetArray(meshNode, "shader", AiArrayCopy(shaders));
         }
       } // end shader assignment
@@ -830,7 +830,7 @@ void ProcessPolyMesh( IPolyMesh &polymesh, ProcArgs &args,
         MatrixSampleMap * xformSamples, const std::string & facesetName )
 {
     SampleTimeSet sampleTimes;
-    std::vector<AtUInt32> vidxs;
+    std::vector<uint32_t> vidxs;
     
     AtNode * meshNode = ProcessPolyMeshBase(
             polymesh, args, sampleTimes, vidxs, 0, xformSamples,
@@ -852,7 +852,7 @@ void ProcessPolyMesh( IPolyMesh &polymesh, ProcArgs &args,
     // AiNodeSetBool(meshNode, "smoothing", true); // Disabled for now so meshes can have hard edges
 
     //TODO: better check
-    if (AiNodeGetArray(meshNode, "vlist")->nkeys == sampleTimes.size())
+    if ( AiArrayGetNumKeys(AiNodeGetArray(meshNode, "vlist")) == sampleTimes.size())
     {
         ProcessIndexedBuiltinParam(
                 ps.getNormalsParam(),
@@ -864,7 +864,7 @@ void ProcessPolyMesh( IPolyMesh &polymesh, ProcArgs &args,
     }
 
     // check that the meshNode has normals and is not  a 
-    if ( !nlist.empty() && AiNodeGetStr(meshNode, "subdiv_type") == "none" )
+    if ( !nlist.empty() && AiNodeGetStr(meshNode, "subdiv_type").c_str() == "none" )
     {
         AiNodeSetArray(meshNode, "nlist",
             AiArrayConvert( nlist.size() / sampleTimes.size(),
@@ -878,7 +878,7 @@ void ProcessPolyMesh( IPolyMesh &polymesh, ProcArgs &args,
            unsigned int base = 0;
            AtArray* nsides = AiNodeGetArray(meshNode, "nsides");
            std::vector<unsigned int> nvidxReversed;
-           for (unsigned int i = 0; i < nsides->nelements / nsides->nkeys; ++i)
+           for (unsigned int i = 0; i <  AiArrayGetNumElements(nsides) /  AiArrayGetNumKeys(nsides); ++i)
            {
               int curNum = AiArrayGetUInt(nsides ,i);
               
@@ -905,7 +905,7 @@ void ProcessSubD( ISubD &subd, ProcArgs &args,
         MatrixSampleMap * xformSamples, const std::string & facesetName )
 {
     SampleTimeSet sampleTimes;
-    std::vector<AtUInt32> vidxs;
+    std::vector<uint32_t> vidxs;
     
     AtNode * meshNode = ProcessPolyMeshBase(
             subd, args, sampleTimes, vidxs, args.subdIterations,
