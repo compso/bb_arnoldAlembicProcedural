@@ -599,7 +599,7 @@ AtNode * ProcessPolyMeshBase(
                   (void*)&vidxs[0]));
 
     AiNodeSetArray(meshNode, "nsides",
-          AiArrayConvert(nsides.size(), 1, AI_TYPE_BYTE,
+          AiArrayConvert(nsides.size(), 1, AI_TYPE_UINT,
                   &(nsides[0])));
 
     AiNodeSetArray(meshNode, "vlist",
