@@ -232,7 +232,7 @@ ProcArgs::ProcArgs( const char * paramStr )
 
 void ProcArgs::usage()
 {
-    std::cerr << "bb_AlembicArnoldProcedural 1.1.1 usage:" << std::endl;
+    std::cerr << "bb_AlembicArnoldProcedural 2.0.0 usage:" << std::endl;
     std::cerr << std::endl;
     
     
