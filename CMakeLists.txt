@@ -50,10 +50,10 @@ SET( H_FILES
   )
 
 SET( CXX_FILES
+  ProcMain.cpp
   ArbGeomParams.cpp
   PathUtil.cpp
   ProcArgs.cpp
-  ProcMain.cpp
   SampleUtil.cpp
   WriteGeo.cpp
   WritePoint.cpp
