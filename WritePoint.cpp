@@ -148,7 +148,7 @@ namespace
 AtNode * ProcessPointsBase(
         IPoints & prim, ProcArgs & args,
         SampleTimeSet & sampleTimes,
-        std::vector<AtPoint> & vidxs,
+        std::vector<AtVector> & vidxs,
 		std::vector<float> & radius,
 		MatrixSampleMap * xformSamples )
 {
@@ -270,7 +270,7 @@ AtNode * ProcessPointsBase(
 			else
 			{
 				AtArray* shaders = AiNodeGetArray(args.proceduralNode, "shader");
-				if (shaders->nelements != 0)
+				if ( AiArrayGetNumElements(shaders) != 0)
 				   AiNodeSetArray(instanceNode, "shader", AiArrayCopy(shaders));
 			}
 		}
@@ -322,14 +322,14 @@ AtNode * ProcessPointsBase(
 			for ( size_t pId = 0; pId < pSize; ++pId ) 
 			{
 				Alembic::Abc::V3f posAtOpen = ((*v3ptr)[pId] + (*velptr)[pId] * scaleVelocity *-timeoffset);			
-				AtPoint pos1;
+				AtVector pos1;
 				pos1.x = posAtOpen.x;
 				pos1.y = posAtOpen.y;
 				pos1.z = posAtOpen.z;
 				vidxs[pId]= pos1;
 
 				Alembic::Abc::V3f posAtEnd = ((*v3ptr)[pId] + (*velptr)[pId]* scaleVelocity *(1.0f-timeoffset));
-				AtPoint pos2;
+				AtVector pos2;
 				pos2.x = posAtEnd.x;
 				pos2.y = posAtEnd.y;
 				pos2.z = posAtEnd.z;
@@ -343,7 +343,7 @@ AtNode * ProcessPointsBase(
 		{
 			for ( size_t pId = 0; pId < pSize; ++pId ) 
 			{
-				AtPoint pos;
+				AtVector pos;
 				pos.x = (*v3ptr)[pId].x;
 				pos.y = (*v3ptr)[pId].y;
 				pos.z = (*v3ptr)[pId].z;
@@ -377,7 +377,7 @@ AtNode * ProcessPointsBase(
 	{
 		AiNodeSetArray(pointsNode, "points",
 				AiArrayConvert( vidxs.size() / sampleTimes.size(), 
-						sampleTimes.size(), AI_TYPE_POINT, (void*)(&(vidxs[0]))
+						sampleTimes.size(), AI_TYPE_VECTOR, (void*)(&(vidxs[0]))
 								));
 		AiNodeSetArray(pointsNode, "radius",
 				AiArrayConvert( vidxs.size() / sampleTimes.size(), 
@@ -407,7 +407,7 @@ AtNode * ProcessPointsBase(
 	{
 		AiNodeSetArray(pointsNode, "points",
 				AiArrayConvert( vidxs.size() / 2, 
-						2, AI_TYPE_POINT, (void*)(&(vidxs[0]))
+						2, AI_TYPE_VECTOR, (void*)(&(vidxs[0]))
 								));
 		AiNodeSetArray(pointsNode, "radius",
 				AiArrayConvert( vidxs.size() /2 / sampleTimes.size(), 
@@ -449,7 +449,7 @@ void ProcessPoint( IPoints &points, ProcArgs &args,
 					MatrixSampleMap * xformSamples)
 {
 	SampleTimeSet sampleTimes;
-    std::vector<AtPoint> vidxs;
+    std::vector<AtVector> vidxs;
 	std::vector<float> radius;
     
     AtNode * pointsNode = ProcessPointsBase(

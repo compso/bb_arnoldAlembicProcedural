@@ -36,6 +36,7 @@
 
 #include <cstring>
 #include <memory>
+#include <ai.h>
 #include "ProcArgs.h"
 #include "PathUtil.h"
 #include "SampleUtil.h"
@@ -282,7 +283,14 @@ void WalkObject( IObject parent, const ObjectHeader &ohead, ProcArgs &args,
 
 //-*************************************************************************
 
-int ProcInit( struct AtNode *node, void **user_ptr )
+AI_PROCEDURAL_NODE_EXPORT_METHODS(AlembicLoaderMtd);
+
+node_parameters
+{
+   AiParameterStr("data", "");
+}
+
+procedural_init
 {
     ProcArgs * args = new ProcArgs( AiNodeGetStr( node, "data" ) );
     args->proceduralNode = node;
@@ -365,7 +373,7 @@ int ProcInit( struct AtNode *node, void **user_ptr )
     {
         Json::Value jroot;
         Json::Reader reader;
-        std::ifstream test(AiNodeGetStr(node, "overridefile"), std::ifstream::binary);
+        std::ifstream test(AiNodeGetStr(node, "overridefile").c_str(), std::ifstream::binary);
         overridesJSONParsingSuccessful = reader.parse( test, jroot, false );
         if ( overridesJSONParsingSuccessful )
         {
@@ -378,7 +386,7 @@ int ProcInit( struct AtNode *node, void **user_ptr )
                     Json::Reader readerOverride;
                     Json::Value jrootOverridesOverrides;
 
-                    if(readerOverride.parse( AiNodeGetStr(node, "overrides"), jrootOverridesOverrides))
+                    if(readerOverride.parse( AiNodeGetStr(node, "overrides").c_str(), jrootOverridesOverrides))
                     {
                         for( Json::ValueIterator itr = jrootOverridesOverrides.begin() ; itr != jrootOverridesOverrides.end() ; itr++ ) 
                         {
@@ -403,7 +411,7 @@ int ProcInit( struct AtNode *node, void **user_ptr )
     {
         Json::Value jroot;
         Json::Reader reader;
-        std::ifstream test(AiNodeGetStr(node, "userAttributesfile"), std::ifstream::binary);
+        std::ifstream test(AiNodeGetStr(node, "userAttributesfile").c_str(), std::ifstream::binary);
         userAttributesJSONParsingSuccessful = reader.parse( test, jroot, false );
         if ( userAttributesJSONParsingSuccessful )
         {
@@ -416,7 +424,7 @@ int ProcInit( struct AtNode *node, void **user_ptr )
                     Json::Reader readerOverride;
                     Json::Value jrootUserAttributesOverrides;
 
-                    if(readerOverride.parse( AiNodeGetStr(node, "userAttributes"), jrootUserAttributesOverrides))
+                    if(readerOverride.parse( AiNodeGetStr(node, "userAttributes").c_str(), jrootUserAttributesOverrides))
                     {
                         for( Json::ValueIterator itr = jrootUserAttributesOverrides.begin() ; itr != jrootUserAttributesOverrides.end() ; itr++ ) 
                         {
@@ -437,7 +445,7 @@ int ProcInit( struct AtNode *node, void **user_ptr )
     {
         Json::Value jroot;
         Json::Reader reader;
-        std::ifstream test(AiNodeGetStr(node, "shaderAssignmentfile"), std::ifstream::binary);
+        std::ifstream test(AiNodeGetStr(node, "shaderAssignmentfile").c_str(), std::ifstream::binary);
         shaderJSONParsingSuccessful = reader.parse( test, jroot, false );
         if ( shaderJSONParsingSuccessful )
         {
@@ -450,7 +458,7 @@ int ProcInit( struct AtNode *node, void **user_ptr )
                 {
                     Json::Reader readerOverride;
                     Json::Value jrootShadersOverrides;
-                    if(readerOverride.parse( AiNodeGetStr(node, "shaderAssignation"), jrootShadersOverrides ))
+                    if(readerOverride.parse( AiNodeGetStr(node, "shaderAssignation").c_str(), jrootShadersOverrides ))
                     {
                         if(jrootShadersOverrides.size() > 0)
                         {
@@ -507,7 +515,7 @@ int ProcInit( struct AtNode *node, void **user_ptr )
                 {
                     Json::Reader readerOverride;
                     Json::Value jrootDisplacementsOverrides;
-                    if(readerOverride.parse( AiNodeGetStr(node, "displacementAssignation"), jrootDisplacementsOverrides ))
+                    if(readerOverride.parse( AiNodeGetStr(node, "displacementAssignation").c_str(), jrootDisplacementsOverrides ))
                     {
                         if(jrootDisplacementsOverrides.size() > 0)
                         {
@@ -562,14 +570,14 @@ int ProcInit( struct AtNode *node, void **user_ptr )
         if (AiNodeLookUpUserParameter(node, "overrides") !=NULL  && skipOverrides == false)
         {
             Json::Reader reader;
-            bool parsingSuccessful = reader.parse( AiNodeGetStr(node, "overrides"), jrootOverrides );
+            bool parsingSuccessful = reader.parse( AiNodeGetStr(node, "overrides").c_str(), jrootOverrides );
         }
 
     if(!userAttributesJSONParsingSuccessful)
         if (AiNodeLookUpUserParameter(node, "userAttributes") !=NULL  && skipUserAttributes == false)
         {
             Json::Reader reader;
-            bool parsingSuccessful = reader.parse( AiNodeGetStr(node, "userAttributes"), jrootUserAttributes );
+            bool parsingSuccessful = reader.parse( AiNodeGetStr(node, "userAttributes").c_str(), jrootUserAttributes );
         }
 
     if(!shaderJSONParsingSuccessful)
@@ -577,12 +585,12 @@ int ProcInit( struct AtNode *node, void **user_ptr )
         if (AiNodeLookUpUserParameter(node, "shaderAssignation") !=NULL && skipShaders == false)
         {
             Json::Reader reader;
-            bool parsingSuccessful = reader.parse( AiNodeGetStr(node, "shaderAssignation"), jrootShaders );
+            bool parsingSuccessful = reader.parse( AiNodeGetStr(node, "shaderAssignation").c_str(), jrootShaders );
         }
         if (AiNodeLookUpUserParameter(node, "displacementAssignation") !=NULL  && skipDisplacement == false)
         {
             Json::Reader reader;
-            bool parsingSuccessful = reader.parse( AiNodeGetStr(node, "displacementAssignation"), jrootDisplacements );
+            bool parsingSuccessful = reader.parse( AiNodeGetStr(node, "displacementAssignation").c_str(), jrootDisplacements );
         }
     }
 
@@ -765,7 +773,7 @@ int ProcInit( struct AtNode *node, void **user_ptr )
 
 //-*************************************************************************
 
-int ProcCleanup( void *user_ptr )
+procedural_cleanup
 {
     // delete reinterpret_cast<ProcArgs*>( user_ptr );
     // return 1;
@@ -788,7 +796,6 @@ int ProcCleanup( void *user_ptr )
         args->displacements.clear();
         args->userAttributes.clear();
         args->overrides.clear();
-        // loop of ginstances first
         
         args->createdNodes.clear();
         delete args;
@@ -798,7 +805,7 @@ int ProcCleanup( void *user_ptr )
 
 //-*************************************************************************
 
-int ProcNumNodes( void *user_ptr )
+procedural_num_nodes
 {
     ProcArgs * args = reinterpret_cast<ProcArgs*>( user_ptr );
     return (int) args->createdNodes.size();
@@ -806,40 +813,41 @@ int ProcNumNodes( void *user_ptr )
 
 //-*************************************************************************
 
-struct AtNode* ProcGetNode(void *user_ptr, int i)
+procedural_get_node
 {
     ProcArgs * args = reinterpret_cast<ProcArgs*>( user_ptr );
     
     if ( i >= 0 && i < (int) args->createdNodes.size() )
     {
         const char* nodeName = AiNodeGetName(args->createdNodes[i]);
-        // AiMsgInfo("[bb_AlembicArnoldProcedural] rendering internal node : %s", nodeName);
+        AiMsgInfo("[bb_AlembicArnoldProcedural] rendering internal node : %s", nodeName);
 
         return args->createdNodes[i];
     }
     
     return NULL;
 }
-
 } //end of namespace
 
-
-
+// DSO hook
 #ifdef __cplusplus
 extern "C"
 {
 #endif
-    AI_EXPORT_LIB int ProcLoader(AtProcVtable *api)
-    {
-        api->Init        = ProcInit;
-        api->Cleanup     = ProcCleanup;
-        api->NumNodes    = ProcNumNodes;
-        api->GetNode     = ProcGetNode;
-        strcpy(api->version, AI_VERSION);
-        return 1;
-    }
+
+
+node_loader
+{
+   if (i > 0)
+      return false;
+   node->methods     = AlembicLoaderMtd;
+   node->output_type = AI_TYPE_NONE;
+   node->name        = "alembic_loader";
+   node->node_type   = AI_NODE_SHAPE_PROCEDURAL;
+   strcpy(node->version, AI_VERSION);
+   return true;
+}
 #ifdef __cplusplus
 }
 #endif
-
 
