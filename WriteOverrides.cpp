@@ -117,6 +117,16 @@ void ApplyOverrides(std::string name, AtNode* node, std::vector<std::string> tag
                       procViz &= ~AI_RAY_SUBSURFACE;
                     else
                       attrViz &= ~AI_RAY_SUBSURFACE;
+                    compViz &= ~AI_RAY_SPECULAR_REFLECT;
+                    if(procViz > compViz)
+                      procViz &= ~AI_RAY_SPECULAR_REFLECT;
+                    else
+                      attrViz &= ~AI_RAY_SPECULAR_REFLECT;
+                    compViz &= ~AI_RAY_DIFFUSE_REFLECT;
+                    if(procViz > compViz)
+                      procViz &= ~AI_RAY_DIFFUSE_REFLECT;
+                    else
+                      attrViz &= ~AI_RAY_DIFFUSE_REFLECT;
                     compViz &= ~AI_RAY_VOLUME;
                     if(procViz > compViz)
                       procViz &= ~AI_RAY_VOLUME;
@@ -127,21 +137,11 @@ void ApplyOverrides(std::string name, AtNode* node, std::vector<std::string> tag
                       procViz &= ~AI_RAY_SPECULAR_TRANSMIT;
                     else
                       attrViz &= ~AI_RAY_SPECULAR_TRANSMIT;
-                    compViz &= ~AI_RAY_SPECULAR_REFLECT;
-                    if(procViz > compViz)
-                      procViz &= ~AI_RAY_SPECULAR_REFLECT;
-                    else
-                      attrViz &= ~AI_RAY_SPECULAR_REFLECT;
                     compViz &= ~AI_RAY_DIFFUSE_TRANSMIT;
                     if(procViz > compViz)
                       procViz &= ~AI_RAY_DIFFUSE_TRANSMIT;
                     else
                       attrViz &= ~AI_RAY_DIFFUSE_TRANSMIT;
-                    compViz &= ~AI_RAY_DIFFUSE_REFLECT;
-                    if(procViz > compViz)
-                      procViz &= ~AI_RAY_DIFFUSE_REFLECT;
-                    else
-                      attrViz &= ~AI_RAY_DIFFUSE_REFLECT;
                     compViz &= ~AI_RAY_SHADOW;
                     if(procViz > compViz)
                       procViz &= ~AI_RAY_SHADOW;
