@@ -34,9 +34,6 @@
 //
 //-*****************************************************************************
 
-
-//
-
 #include "WriteGeo.h"
 #include "WriteTransform.h"
 #include "WriteOverrides.h"
@@ -454,19 +451,19 @@ AtNode * ProcessPolyMeshBase(
             unsigned int facePointIndex = 0;
             unsigned int base = 0;
 
-            for (unsigned int i = 0; i < numPolys; ++i)
-            {
-               // reverse the order of the faces
-               int curNum = nsides[i];
-               for (int j = 0; j < curNum; ++j, ++facePointIndex)
-               {
-                  vidxs.push_back((*sample.getFaceIndices())[base+curNum-j-1]);
+            // for (unsigned int i = 0; i < numPolys; ++i)
+            // {
+            //    // reverse the order of the faces
+            //    int curNum = nsides[i];
+            //    for (int j = 0; j < curNum; ++j, ++facePointIndex)
+            //    {
+            //       vidxs.push_back((*sample.getFaceIndices())[base+curNum-j-1]);
 
-               }
-               base += curNum;
-            }
+            //    }
+            //    base += curNum;
+            // }
+            vidxs.insert(vidxs.end(), sample.getFaceIndices()->get(), sample.getFaceIndices()->get() + vidxSize);
         }
-  
         if(numSampleTimes == 1 && (args.shutterOpen != args.shutterClose) && (ps.getVelocitiesProperty().valid()) && isFirstSample )
         {
             float scaleVelocity = 1.0f;
@@ -481,7 +478,6 @@ AtNode * ProcessPolyMeshBase(
             float timeoffset = ((args.frame / args.fps) - ts->getFloorIndex((*I), ps.getNumSamples()).second) * args.fps;
             for ( size_t vId = 0; vId < pSize; ++vId )
             {
-                
                 Alembic::Abc::V3f posAtOpen = ((*v3ptr)[vId] + (*velptr)[vId] * scaleVelocity *-timeoffset);
                 vlist[3*vId + 0] = posAtOpen.x;
                 vlist[3*vId + 1] = posAtOpen.y;
@@ -522,6 +518,12 @@ AtNode * ProcessPolyMeshBase(
     }
 
     args.createdNodes.push_back(meshNode);
+
+    // make the default smoothing true since that is the most common case, although different from the arnold default.
+    bool smoothing = true;
+    if (AiNodeLookUpUserParameter(args.proceduralNode, "smoothing"))
+      smoothing = AiNodeGetBool(args.proceduralNode, "smoothing");
+    AiNodeSetBool(meshNode, "smoothing", smoothing);
 
     // Attribute overrides. We assume instance mode all the time here.
     if(args.linkOverride)
