@@ -763,28 +763,50 @@ AtNode * ProcessCurvesBase(
         AiNodeSetArray(curvesNode, "radius",AiArray( 1 , 1, AI_TYPE_FLOAT, radiusCurve));
 
 
-    if ( sampleTimes.size() > 1 )
+    double s0 = *sampleTimes.begin();
+    double s1 = *sampleTimes.rbegin();
+
+    // if there is a xform interval then expand by it
+    if (xformSamples && xformSamples->size() > 1)
     {
-      std::vector<float> relativeSampleTimes;
-      relativeSampleTimes.reserve( sampleTimes.size() );
+      double x0 = xformSamples->cbegin()->first;
+      double x1 = xformSamples->crbegin()->first;
 
-      for (SampleTimeSet::const_iterator I = sampleTimes.begin();
-              I != sampleTimes.end(); ++I )
-      {
-          relativeSampleTimes.push_back(
-                  GetRelativeSampleTime( args, (*I) ) );
+      if (x0 < s0 || numSampleTimes < 2)
+        s0 = x0;
 
-      }
-
-      AiNodeSetArray( curvesNode, "deform_time_samples",
-              AiArrayConvert(relativeSampleTimes.size(), 1,
-                      AI_TYPE_FLOAT, &relativeSampleTimes[0]));
+      if (x1 > s1 || numSampleTimes < 2)
+        s1 = x1;
     }
-    else if(numSampleTimes == 2)
-    {
-        AiNodeSetArray( curvesNode, "deform_time_samples",
-                AiArray(2, 1, AI_TYPE_FLOAT, 0.f, 1.f));
-    }
+
+    double motion_start = s0 * args.fps - args.frame;
+    double motion_end = s1 * args.fps - args.frame;
+
+    AiNodeSetFlt(curvesNode, "motion_start", motion_start);
+    AiNodeSetFlt(curvesNode, "motion_end", motion_end);
+
+    // if ( sampleTimes.size() > 1 )
+    // {
+    //   std::vector<float> relativeSampleTimes;
+    //   relativeSampleTimes.reserve( sampleTimes.size() );
+
+    //   for (SampleTimeSet::const_iterator I = sampleTimes.begin();
+    //           I != sampleTimes.end(); ++I )
+    //   {
+    //       relativeSampleTimes.push_back(
+    //               GetRelativeSampleTime( args, (*I) ) );
+
+    //   }
+
+    //   AiNodeSetArray( curvesNode, "deform_time_samples",
+    //           AiArrayConvert(relativeSampleTimes.size(), 1,
+    //                   AI_TYPE_FLOAT, &relativeSampleTimes[0]));
+    // }
+    // else if(numSampleTimes == 2)
+    // {
+    //     AiNodeSetArray( curvesNode, "deform_time_samples",
+    //             AiArray(2, 1, AI_TYPE_FLOAT, 0.f, 1.f));
+    // }
 
     {
         ICompoundProperty arbGeomParams = ps.getArbGeomParams();

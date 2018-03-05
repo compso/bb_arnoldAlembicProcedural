@@ -70,6 +70,9 @@ ProcArgs::ProcArgs( const char * paramStr )
     shutterOpen = AiNodeGetFlt(camera, "shutter_start");
     shutterClose = AiNodeGetFlt(camera, "shutter_end");
 
+
+    
+
     typedef boost::char_separator<char> Separator;
     typedef boost::tokenizer<Separator> Tokenizer;
     
@@ -173,7 +176,6 @@ ProcArgs::ProcArgs( const char * paramStr )
         else if ( token == "-excludexform" )
         {
             excludeXform = true;
-            
         }
         else if ( token == "-subditerations" )
         {
@@ -223,10 +225,10 @@ ProcArgs::ProcArgs( const char * paramStr )
     }
 
 
-    AtNode* options = AiUniverseGetOptions();
-    referenceTime = AiNodeGetFlt(options, "reference_time");
+    // AtNode* options = AiUniverseGetOptions();
+    // referenceTime = AiNodeGetFlt(options, "reference_time");
 
-    frame -= referenceTime;
+    // frame -= referenceTime;
 }
 
 

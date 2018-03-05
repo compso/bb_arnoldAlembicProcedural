@@ -61,12 +61,12 @@ void GetRelevantSampleTimes( ProcArgs &args, TimeSamplingPtr timeSampling,
                             size_t numSamples, SampleTimeSet &output,
                             MatrixSampleMap * inheritedSamples)
 {
-    
-    /*if ( numSamples < 2 )
+
+    if ( numSamples == 0 )
     {
         output.insert( 0.0 );
         return;
-    }*/
+    }
 
     chrono_t frameTime = ( args.frame + args.frameOffset ) / args.fps;
 
@@ -74,7 +74,7 @@ void GetRelevantSampleTimes( ProcArgs &args, TimeSamplingPtr timeSampling,
 
     chrono_t shutterCloseTime = ( args.frame + args.shutterClose ) / args.fps;
 
-    
+
     // For interpolating and concatenating samples, we need to consider
     // possible inherited sample times outside of our natural shutter range
     if (inheritedSamples && inheritedSamples->size() > 1)
@@ -202,43 +202,35 @@ namespace
     M44d GetNaturalOrInterpolatedSampleForTime(const MatrixSampleMap & samples,
             Abc::chrono_t sampleTime)
     {
-        MatrixSampleMap::const_iterator I = samples.find(sampleTime);
+        auto I = samples.find(sampleTime);
         if (I != samples.end())
         {
             return (*I).second;
         }
-        
+
         if (samples.empty())
         {
             return M44d();
         }
-        
-        if (samples.size() == 1)
+
+        if (samples.size() == 1 || sampleTime <= samples.begin()->first)
         {
             return samples.begin()->second;
         }
-        
-        if (sampleTime <= samples.begin()->first)
-        {
-            return samples.begin()->second;
-        }
-        
+
         if (sampleTime >= samples.rbegin()->first)
         {
             return samples.rbegin()->second;
         }
-        
-        //find the floor and ceiling samples and interpolate
+
+        // Find the floor and ceiling samples and interpolate
         Abc::chrono_t lTime = samples.begin()->first;
         Abc::chrono_t rTime = samples.rbegin()->first;
-        
-        
-        
-        for (MatrixSampleMap::const_iterator I = samples.begin();
-                I != samples.end(); ++I)
+
+        for (auto I : samples)
         {
-            Abc::chrono_t testSampleTime= (*I).first;
-            
+            Abc::chrono_t testSampleTime = I.first;
+
             if (testSampleTime > lTime && testSampleTime <= sampleTime)
             {
                 lTime = testSampleTime;
@@ -248,55 +240,42 @@ namespace
                 rTime = testSampleTime;
             }
         }
-        
-        
+
         M44d mtx_l;
         M44d mtx_r;
-        
+
         {
             MatrixSampleMap::const_iterator I;
-            
+
             I = samples.find(lTime);
             if (I != samples.end())
             {
                 mtx_l = (*I).second;
             }
-            
+
             I = samples.find(rTime);
             if (I != samples.end())
             {
                 mtx_r = (*I).second;
             }
-            
-            
-            
-        
         }
-        
-        Imath::V3d s_l,s_r,h_l,h_r,t_l,t_r;
-        Imath::Quatd quat_l,quat_r;
-        
+
+        Imath::V3d s_l, s_r, h_l, h_r, t_l, t_r;
+        Imath::Quatd quat_l, quat_r;
+
         DecomposeXForm(mtx_l, s_l, h_l, quat_l, t_l);
         DecomposeXForm(mtx_r, s_r, h_r, quat_r, t_r);
-        
-        Abc::chrono_t amt = (sampleTime-lTime) / (rTime-lTime);
-        
+
+        Abc::chrono_t amt = (sampleTime - lTime) / (rTime - lTime);
+
         if ((quat_l ^ quat_r) < 0)
         {
             quat_r = -quat_r;
         }
-        
-        return RecomposeXForm(lerp(s_l, s_r, amt),
-                                 lerp(h_l, h_r, amt),
-                                 Imath::slerp(quat_l, quat_r, amt),
-                                 lerp(t_l, t_r, amt));
-        
-        
-        
+
+        return RecomposeXForm(lerp(s_l, s_r, amt), lerp(h_l, h_r, amt), Imath::slerp(quat_l, quat_r, amt),
+                lerp(t_l, t_r, amt));
     }
-
-
-
 }
 
 //-*****************************************************************************
@@ -307,28 +286,23 @@ void ConcatenateXformSamples( ProcArgs &args,
         MatrixSampleMap & outputSamples)
 {
     SampleTimeSet unionOfSampleTimes;
-    
-    for (MatrixSampleMap::const_iterator I = parentSamples.begin();
-            I != parentSamples.end(); ++I)
+
+    for (auto I : parentSamples)
     {
-        unionOfSampleTimes.insert((*I).first);
+        unionOfSampleTimes.insert(I.first);
     }
-    
-    for (MatrixSampleMap::const_iterator I = localSamples.begin();
-            I != localSamples.end(); ++I)
+
+    for (auto I : localSamples)
     {
-        unionOfSampleTimes.insert((*I).first);
+        unionOfSampleTimes.insert(I.first);
     }
-    
-    for (SampleTimeSet::iterator I = unionOfSampleTimes.begin();
-            I != unionOfSampleTimes.end(); ++I)
+
+    for (auto t : unionOfSampleTimes)
     {
-        M44d parentMtx = GetNaturalOrInterpolatedSampleForTime(parentSamples,
-                (*I));
-        M44d localMtx = GetNaturalOrInterpolatedSampleForTime(localSamples,
-                (*I));
-        
-        outputSamples[(*I)] = localMtx * parentMtx;
+        M44d parentMtx = GetNaturalOrInterpolatedSampleForTime(parentSamples, t);
+        M44d localMtx = GetNaturalOrInterpolatedSampleForTime(localSamples, t);
+
+        outputSamples[t] = localMtx * parentMtx;
     }
 }
 
@@ -336,11 +310,6 @@ Abc::chrono_t GetRelativeSampleTime( ProcArgs &args, Abc::chrono_t sampleTime)
 {
     const chrono_t epsilon = 1.0 / 10000.0;
 
-    // float length = (args.shutterClose - args.shutterOpen);
-    // if( length < epsilon )
-    // {
-    //     return 0.0;
-    // }
 
     chrono_t frameTime = ( args.frame + args.frameOffset ) / args.fps;
     // Arnold consider that shutterOpen is 0.0 and shutterClose is 1.0
