@@ -150,13 +150,104 @@ namespace
     NodeCache g_meshCache;
 }
 
+//-*************************************************************************
+// doNormals
+// This function does nothing for subdv, but write normals for non-subdvided meshes. Called in writeMesh.
+// we also have to pass the number of vertex times in case we use motion vectors, as arnold needs the same amount of keys for
+// the normals like the vertices
+template<typename primT> 
+inline void doNormals( primT& prim, AtNode *meshNode, const SampleTimeSet& sampleTimes, size_t numVertexSamples, const std::vector<unsigned int>& vidxs)
+{
+}
+
+template<> 
+inline void doNormals<IPolyMesh>(IPolyMesh& prim, AtNode *meshNode, const SampleTimeSet& sampleTimes, size_t numVertexSamples, const std::vector<unsigned int>& vidxs)
+{
+    if (AiNodeGetInt(meshNode, "subdiv_type") == 0 && sampleTimes.size() > 0) // if the mesh has subdiv, we don't need normals as they are recomputed by arnold!
+    {
+        std::vector<float> nlist;
+        std::vector<unsigned int> nidxs;
+
+        ProcessIndexedBuiltinParam(
+                prim.getSchema().getNormalsParam(),
+                sampleTimes,
+                nlist,
+                nidxs,
+                3);
+
+        const size_t numSampleTimes = sampleTimes.size();
+
+        const size_t numNormals = nlist.size() / (numSampleTimes * 3);
+
+        if (numNormals > 0)
+        {            
+            if (numSampleTimes < numVertexSamples)
+            {
+                AtArray* narr = AiArrayAllocate(numNormals, numVertexSamples, AI_TYPE_VECTOR);
+                const size_t numValidNormals = numNormals * numSampleTimes;
+                for (size_t i = 0; i < numValidNormals; ++i)
+                {
+                    const size_t id = i * 3;
+                    AtVector v = AtVector(nlist[id], nlist[id + 1], nlist[id + 2]);
+                    AiArraySetVec(narr, i, v);
+                }
+
+                const size_t validNormalSource = (numSampleTimes - 1) * 3 * numNormals;
+                const size_t sampleDiff = numVertexSamples - numSampleTimes;
+                for (size_t i = 0; i < sampleDiff; ++i)
+                {
+                    const size_t normalTarget = numValidNormals + i * numNormals;
+                    for (size_t j = 0; j < numNormals; ++j)
+                    {
+                        const size_t id = validNormalSource + j * 3;
+                        AtVector v = AtVector(nlist[id], nlist[id + 1], nlist[id + 2]);
+                        AiArraySetVec(narr, normalTarget + j, v);
+                    }
+                }
+                AiNodeSetArray(meshNode, "nlist", narr);
+            }
+            else
+                AiNodeSetArray(meshNode, "nlist",
+                               AiArrayConvert(numNormals,
+                                              numVertexSamples, AI_TYPE_VECTOR, &nlist[0]));
+               
+
+            if (!nidxs.empty())
+            {
+               // we must invert the idxs
+               //unsigned int facePointIndex = 0;
+               unsigned int base = 0;
+               AtArray* nsides = AiNodeGetArray(meshNode, "nsides");
+               std::vector<unsigned int> nvidxReversed;
+               for (unsigned int i = 0; i < AiArrayGetNumElements(nsides) / AiArrayGetNumKeys(nsides); ++i)
+               {
+                  int curNum = AiArrayGetUInt(nsides ,i);
+
+                  for (int j = 0; j < curNum; ++j)
+                  {
+                      nvidxReversed.push_back(nidxs[base+curNum-j-1]);
+                  }
+                  base += curNum;
+               }
+                AiNodeSetArray(meshNode, "nidxs", AiArrayConvert(nvidxReversed.size(), 1, AI_TYPE_UINT, &nvidxReversed[0]));
+            }
+            else
+            {
+                AiNodeSetArray(meshNode, "nidxs",
+                        AiArrayConvert(vidxs.size(), 1, AI_TYPE_UINT,
+                                &vidxs[0]));
+            }
+        }
+    }
+}
+
+
 
 //-*************************************************************************
 // This is templated to handle shared behavior of IPolyMesh and ISubD
 
 // We send in our empty sampleTimes and vidxs because polymesh needs those
 // for processing animated normal.
-
 
 // The return value is the polymesh node. If instanced, it will be returned
 // for the first created instance only.
@@ -448,21 +539,21 @@ AtNode * ProcessPolyMeshBase(
             size_t vidxSize = sample.getFaceIndices()->size();
             vidxs.reserve( vidxSize );
 
-            // unsigned int facePointIndex = 0;
-            // unsigned int base = 0;
+            unsigned int facePointIndex = 0;
+            unsigned int base = 0;
 
-            // for (unsigned int i = 0; i < numPolys; ++i)
-            // {
-            //    // reverse the order of the faces
-            //    int curNum = nsides[i];
-            //    for (int j = 0; j < curNum; ++j, ++facePointIndex)
-            //    {
-            //       vidxs.push_back((*sample.getFaceIndices())[base+curNum-j-1]);
+            for (unsigned int i = 0; i < numPolys; ++i)
+            {
+               // reverse the order of the faces
+               int curNum = nsides[i];
+               for (int j = 0; j < curNum; ++j, ++facePointIndex)
+               {
+                  vidxs.push_back((*sample.getFaceIndices())[base+curNum-j-1]);
 
-            //    }
-            //    base += curNum;
-            // }
-            vidxs.insert(vidxs.end(), sample.getFaceIndices()->get(), sample.getFaceIndices()->get() + vidxSize);
+               }
+               base += curNum;
+            }
+            // vidxs.insert(vidxs.end(), sample.getFaceIndices()->get(), sample.getFaceIndices()->get() + vidxSize);
         }
         if(numSampleTimes == 1 && (args.shutterOpen != args.shutterClose) && (ps.getVelocitiesProperty().valid()) && isFirstSample )
         {
@@ -712,6 +803,9 @@ AtNode * ProcessPolyMeshBase(
     //             AiArray(2, 1, AI_TYPE_FLOAT, 0.f, 1.f));
     // }
 
+    // NORMALS   
+    doNormals(prim, meshNode, sampleTimes, numSampleTimes, vidxs);
+
     // faceset visibility array
     if ( !facesetName.empty() )
     {
@@ -868,59 +962,59 @@ void ProcessPolyMesh( IPolyMesh &polymesh, ProcArgs &args,
     }
 
   
-    IPolyMeshSchema &ps = polymesh.getSchema();
+    // IPolyMeshSchema &ps = polymesh.getSchema();
 
-    std::vector<float> nlist;
-    std::vector<unsigned int> nidxs;
+    // std::vector<float> nlist;
+    // std::vector<unsigned int> nidxs;
 
-    // AiNodeSetBool(meshNode, "smoothing", true); // Disabled for now so meshes can have hard edges
+    // // AiNodeSetBool(meshNode, "smoothing", true); // Disabled for now so meshes can have hard edges
 
-    //TODO: better check
-    if ( AiArrayGetNumKeys(AiNodeGetArray(meshNode, "vlist")) == sampleTimes.size())
-    {
-        ProcessIndexedBuiltinParam(
-                ps.getNormalsParam(),
-                sampleTimes,
-                nlist,
-                nidxs,
-                3);
+    // //TODO: better check
+    // if ( AiArrayGetNumKeys(AiNodeGetArray(meshNode, "vlist")) == sampleTimes.size())
+    // {
+    //     ProcessIndexedBuiltinParam(
+    //             ps.getNormalsParam(),
+    //             sampleTimes,
+    //             nlist,
+    //             nidxs,
+    //             3);
     
-    }
+    // }
 
-    // check that the meshNode has normals and is not  a 
-    if ( !nlist.empty() && AiNodeGetStr(meshNode, "subdiv_type").c_str() == "none" )
-    {
-        AiNodeSetArray(meshNode, "nlist",
-            AiArrayConvert( nlist.size() / sampleTimes.size(),
-                    sampleTimes.size(), AI_TYPE_FLOAT, (void*)(&(nlist[0]))));
+    // // check that the meshNode has normals and is not  a 
+    // if ( !nlist.empty() && AiNodeGetStr(meshNode, "subdiv_type").c_str() == "none" )
+    // {
+    //     AiNodeSetArray(meshNode, "nlist",
+    //         AiArrayConvert( nlist.size() / sampleTimes.size(),
+    //                 sampleTimes.size(), AI_TYPE_FLOAT, (void*)(&(nlist[0]))));
 
-        if ( !nidxs.empty() )
-        {
+    //     if ( !nidxs.empty() )
+    //     {
 
-           // we must invert the idxs
-           //unsigned int facePointIndex = 0;
-           unsigned int base = 0;
-           AtArray* nsides = AiNodeGetArray(meshNode, "nsides");
-           std::vector<unsigned int> nvidxReversed;
-           for (unsigned int i = 0; i <  AiArrayGetNumElements(nsides) /  AiArrayGetNumKeys(nsides); ++i)
-           {
-              int curNum = AiArrayGetUInt(nsides ,i);
+    //        // we must invert the idxs
+    //        //unsigned int facePointIndex = 0;
+    //        unsigned int base = 0;
+    //        AtArray* nsides = AiNodeGetArray(meshNode, "nsides");
+    //        std::vector<unsigned int> nvidxReversed;
+    //        for (unsigned int i = 0; i <  AiArrayGetNumElements(nsides) /  AiArrayGetNumKeys(nsides); ++i)
+    //        {
+    //           int curNum = AiArrayGetUInt(nsides ,i);
               
-              for (int j = 0; j < curNum; ++j)
-              {
-                  nvidxReversed.push_back(nidxs[base+curNum-j-1]);
-              }
-              base += curNum;
-           }
-            AiNodeSetArray(meshNode, "nidxs", AiArrayConvert(nvidxReversed.size(), 1, AI_TYPE_UINT, (void*)&nvidxReversed[0]));
-        }
-        else
-        {
-            AiNodeSetArray(meshNode, "nidxs",
-                    AiArrayConvert(vidxs.size(), 1, AI_TYPE_UINT,
-                            &(vidxs[0])));
-        }
-    }
+    //           for (int j = 0; j < curNum; ++j)
+    //           {
+    //               nvidxReversed.push_back(nidxs[base+curNum-j-1]);
+    //           }
+    //           base += curNum;
+    //        }
+    //         AiNodeSetArray(meshNode, "nidxs", AiArrayConvert(nvidxReversed.size(), 1, AI_TYPE_UINT, (void*)&nvidxReversed[0]));
+    //     }
+    //     else
+    //     {
+    //         AiNodeSetArray(meshNode, "nidxs",
+    //                 AiArrayConvert(vidxs.size(), 1, AI_TYPE_UINT,
+    //                         &(vidxs[0])));
+    //     }
+    // }
 }
 
 //-*************************************************************************
