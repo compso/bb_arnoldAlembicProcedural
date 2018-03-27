@@ -43,186 +43,191 @@
 
 //-*****************************************************************************
 //INSERT YOUR OWN TOKENIZATION CODE AND STYLE HERE
-ProcArgs::ProcArgs( const char * paramStr )
-  : frame(0.0)
-  , frameOffset(0.0)
-  , fps(24.0)
-  , shutterOpen(0)
-  , shutterClose(0)
-  , excludeXform(false)
-  , subdIterations(0)
-  , subdUVSmoothing("pin_corners")
-  , pattern("*")
-  , excludePattern("")
-  , disp_padding(-AI_BIG)
-  , proceduralNode(0)
-  , flipv(false)
-  , makeInstance(false) 
-  , invertNormals(false)   
-  , linkShader(false)
-  , linkDisplacement(false)
-  , linkOverride(false)
-  , linkUserAttributes(false)
-{    
+ProcArgs::ProcArgs( AtNode* node )
+  : proceduralNode(node)
+{
     // Grab the shutter a camera attached to AiUniverse if present
+    filename = std::string(AiNodeGetStr(node, "filename"));
+    nameprefix = std::string(AiNodeGetStr(node, "nameprefix"));
+    objectpath = std::string(AiNodeGetStr(node, "objectpath"));
+    frame = AiNodeGetFlt(node, "frame");
+    fps = AiNodeGetFlt(node, "fps");
 
-    AtNode* camera = AiUniverseGetCamera();
-    shutterOpen = AiNodeGetFlt(camera, "shutter_start");
-    shutterClose = AiNodeGetFlt(camera, "shutter_end");
+    shutterOpen = AiNodeGetFlt(node, "shutter_start");
+    shutterClose = AiNodeGetFlt(node, "shutter_end");
+    excludeXform = AiNodeGetBool(node, "exclude_xform");
+    makeInstance = AiNodeGetBool(node, "make_instance");
+    flipv = AiNodeGetBool(node, "flip_v");
 
+    pattern = std::string(AiNodeGetStr(nodem "pattern"));
+    excludePattern = std::string(AiNodeGetStr(nodem "exclude_pattern"));
 
-    
+    overrides = std::string(AiNodeGetStr(node, "overrides"));
+    shaderAssignation = std::string(AiNodeGetStr(node, "shader_assignation"));
+    displacementAssignation = std::string(AiNodeGetStr(node, "displacement_assignation"));
+    overridefile = std::string(AiNodeGetStr(node, "overridefile"));
+    shaderAssignmentfile = std::string(AiNodeGetStr(node, "shader_assignmentfile"));
+    userAttributes = std::string(AiNodeGetStr(node, "user_attributes"));
+    userAttributesfile = std::string(AiNodeGetStr(node, "user_attributesfile"));
 
-    typedef boost::char_separator<char> Separator;
-    typedef boost::tokenizer<Separator> Tokenizer;
-    
-    std::vector<std::string> tokens;
-    std::string params( paramStr );
+    assShaders = std::string(aiNodeGetStr(node, "ass_shaders"));
 
-    Tokenizer tokenizer( params, Separator(" ") );
-    for ( Tokenizer::iterator iter = tokenizer.begin(); iter != tokenizer.end() ;
-          ++iter )
-    {
-        if ( (*iter).empty() ) { continue; }
+    skip_json = AiNodeGetBool(node, "skipJson");
+    skip_shaders = AiNodeGetBool(node, "skipShaders");
+    skip_overrides = AiNodeGetBool(node, "skipOverrides");
+    skip_displacements = AiNodeGetBool(node, "skipDisplacements");
+    skip_user_attributes = AiNodeGetBool(node, "skipUserAttributes");
 
-        tokens.push_back( *iter );
-    }
+    // typedef boost::char_separator<char> Separator;
+    // typedef boost::tokenizer<Separator> Tokenizer;
 
-    for ( size_t i = 0; i < tokens.size(); ++i )
-    {
-        std::string token = tokens[i];
-        std::transform( token.begin(), token.end(), token.begin(), ::tolower );
+    // std::vector<std::string> tokens;
+    // std::string params( paramStr );
 
-        if ( token == "-frame" )
-        {
-            ++i;
-            if ( i < tokens.size() )
-            {
-                frame = atof( tokens[i].c_str() );
-            }
-        }
-        else if ( token == "-frameoffset" )
-        {
-            ++i;
-            if ( i < tokens.size() )
-            {
-                frameOffset = atof( tokens[i].c_str() );
-            }
-        }
-        else if ( token == "-fps" )
-        {
-            ++i;
-            if ( i < tokens.size() )
-            {
-                fps = atof( tokens[i].c_str() );
-            }
-        }
-        else if ( token == "-shutteropen" )
-        {
-            ++i;
-            if ( i < tokens.size() )
-            {
-                shutterOpen = atof( tokens[i].c_str() );
-            }
-        }
-        else if ( token == "-shutterclose" )
-        {
-            ++i;
-            if ( i < tokens.size() )
-            {
-                shutterClose = atof( tokens[i].c_str() );
-            }
-        }
-        else if ( token == "-filename" )
-        {
-            ++i;
-            if ( i < tokens.size() )
-            {
-                filename = tokens[i];
-            }
-        }
-        else if ( token == "-nameprefix" )
-        {
-            ++i;
-            if ( i < tokens.size() )
-            {
-                nameprefix = tokens[i];
-            }
-        }
-        else if ( token == "-objectpath" )
-        {
-            ++i;
-            if ( i < tokens.size() )
-            {
-                objectpath = tokens[i];
-            }
-        }
-        else if ( token == "-pattern" )
-        {
-            ++i;
-            if ( i < tokens.size() )
-            {
-                pattern = tokens[i];
-            }
-        }
-        else if ( token == "-excludepattern" )
-        {
-            ++i;
-            if ( i < tokens.size() )
-            {
-                excludePattern = tokens[i];
-            }
-        }
-        else if ( token == "-excludexform" )
-        {
-            excludeXform = true;
-        }
-        else if ( token == "-subditerations" )
-        {
-            ++i;
-            if ( i < tokens.size() )
-            {
-                subdIterations = atoi( tokens[i].c_str() );
-            }
-        }
-        else if ( token == "-subduvsmoothing" )
-        {
-            ++i;
-            if ( i < tokens.size() )
-            {
-                subdUVSmoothing = tokens[i];
-            }
-        }
-        else if ( token == "-disp_map" )
-        {
-            ++i;
-            if ( i < tokens.size() )
-            {
-                disp_map = tokens[i];
-            }
-        }
-        else if ( token == "-disp_padding" )
-        {
-            ++i;
-            if ( i < tokens.size() )
-            {
-                disp_padding = atof( tokens[i].c_str() );
-            }
-        }
-        else if ( token == "-makeinstance" )
-        {
-            makeInstance = true;
-        }
-        else if ( token == "-flipv" )
-        {
-            flipv = true;
-        }
-        else if ( token == "-invertNormals" )
-        {
-            invertNormals = true;
-        }
+    // Tokenizer tokenizer( params, Separator(" ") );
+    // for ( Tokenizer::iterator iter = tokenizer.begin(); iter != tokenizer.end() ;
+    //       ++iter )
+    // {
+    //     if ( (*iter).empty() ) { continue; }
+
+    //     tokens.push_back( *iter );
+    // }
+
+    // for ( size_t i = 0; i < tokens.size(); ++i )
+    // {
+    //     std::string token = tokens[i];
+    //     std::transform( token.begin(), token.end(), token.begin(), ::tolower );
+
+    //     if ( token == "-frame" )
+    //     {
+    //         ++i;
+    //         if ( i < tokens.size() )
+    //         {
+    //             frame = atof( tokens[i].c_str() );
+    //         }
+    //     }
+    //     else if ( token == "-frameoffset" )
+    //     {
+    //         ++i;
+    //         if ( i < tokens.size() )
+    //         {
+    //             frameOffset = atof( tokens[i].c_str() );
+    //         }
+    //     }
+    //     else if ( token == "-fps" )
+    //     {
+    //         ++i;
+    //         if ( i < tokens.size() )
+    //         {
+    //             fps = atof( tokens[i].c_str() );
+    //         }
+    //     }
+    //     else if ( token == "-shutteropen" )
+    //     {
+    //         ++i;
+    //         if ( i < tokens.size() )
+    //         {
+    //             shutterOpen = atof( tokens[i].c_str() );
+    //         }
+    //     }
+    //     else if ( token == "-shutterclose" )
+    //     {
+    //         ++i;
+    //         if ( i < tokens.size() )
+    //         {
+    //             shutterClose = atof( tokens[i].c_str() );
+    //         }
+    //     }
+    //     else if ( token == "-filename" )
+    //     {
+    //         ++i;
+    //         if ( i < tokens.size() )
+    //         {
+    //             filename = tokens[i];
+    //         }
+    //     }
+    //     else if ( token == "-nameprefix" )
+    //     {
+    //         ++i;
+    //         if ( i < tokens.size() )
+    //         {
+    //             nameprefix = tokens[i];
+    //         }
+    //     }
+    //     else if ( token == "-objectpath" )
+    //     {
+    //         ++i;
+    //         if ( i < tokens.size() )
+    //         {
+    //             objectpath = tokens[i];
+    //         }
+    //     }
+    //     else if ( token == "-pattern" )
+    //     {
+    //         ++i;
+    //         if ( i < tokens.size() )
+    //         {
+    //             pattern = tokens[i];
+    //         }
+    //     }
+    //     else if ( token == "-excludepattern" )
+    //     {
+    //         ++i;
+    //         if ( i < tokens.size() )
+    //         {
+    //             excludePattern = tokens[i];
+    //         }
+    //     }
+    //     else if ( token == "-excludexform" )
+    //     {
+    //         excludeXform = true;
+    //     }
+    //     else if ( token == "-subditerations" )
+    //     {
+    //         ++i;
+    //         if ( i < tokens.size() )
+    //         {
+    //             subdIterations = atoi( tokens[i].c_str() );
+    //         }
+    //     }
+    //     else if ( token == "-subduvsmoothing" )
+    //     {
+    //         ++i;
+    //         if ( i < tokens.size() )
+    //         {
+    //             subdUVSmoothing = tokens[i];
+    //         }
+    //     }
+    //     else if ( token == "-disp_map" )
+    //     {
+    //         ++i;
+    //         if ( i < tokens.size() )
+    //         {
+    //             disp_map = tokens[i];
+    //         }
+    //     }
+    //     else if ( token == "-disp_padding" )
+    //     {
+    //         ++i;
+    //         if ( i < tokens.size() )
+    //         {
+    //             disp_padding = atof( tokens[i].c_str() );
+    //         }
+    //     }
+    //     else if ( token == "-makeinstance" )
+    //     {
+    //         makeInstance = true;
+    //     }
+    //     else if ( token == "-flipv" )
+    //     {
+    //         flipv = true;
+    //     }
+    //     else if ( token == "-invertNormals" )
+    //     {
+    //         invertNormals = true;
+    //     }
         
-    }
+    // }
 
 
     // AtNode* options = AiUniverseGetOptions();

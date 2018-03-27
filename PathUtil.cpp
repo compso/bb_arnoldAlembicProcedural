@@ -37,23 +37,20 @@
 
 #include <algorithm> 
 
-#include <boost/tokenizer.hpp> // TODO replace with pystring method
-#include <boost/regex.hpp>
+#include <cstdlib>
+#include <cstdio>
+#include <cstring>
+#include <regex>
 
 //-*****************************************************************************
 void TokenizePath( const std::string &path, std::vector<std::string> &result )
 {
-    typedef boost::char_separator<char> Separator;
-    typedef boost::tokenizer<Separator> Tokenizer;
-
-    Tokenizer tokenizer( path, Separator( "/" ) );
-
-    for ( Tokenizer::iterator iter = tokenizer.begin() ; iter != tokenizer.end() ;
-          ++iter )
+    char* token = std::strtok(const_cast<char*>(path.c_str()), "/");
+    while (token != NULL)
     {
-        if ( (*iter).empty() ) { continue; }
-
-        result.push_back( *iter );
+        if (!*token) continue;
+        result.push_back(token);
+        token = std::strtok(NULL, sep.c_str());
     }
 }
 
@@ -142,7 +139,7 @@ static std::string translate(const char *pattern)
  
 bool matchPattern(std::string str, std::string pat)
 {
-    boost::regex rx (translate(pat.c_str()).c_str());
-    bool result = boost::regex_search(str,rx);
+    std::regex rx (translate(pat.c_str()).c_str());
+    bool result = std::regex_search(str,rx);
     return result;
 }

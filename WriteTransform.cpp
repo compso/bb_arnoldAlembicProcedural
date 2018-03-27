@@ -44,10 +44,6 @@
 
 #include "json/json.h"
 
-#include <boost/thread.hpp>
-
-
-
 //-*****************************************************************************
 
 #if AI_VERSION_ARCH_NUM == 3

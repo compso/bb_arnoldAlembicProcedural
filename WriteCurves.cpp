@@ -46,8 +46,6 @@
 #include <ai.h>
 #include <sstream>
 
-#include <boost/regex.hpp>
-// #include <boost/thread.hpp>
 //-*****************************************************************************
 
 #if AI_VERSION_ARCH_NUM == 3

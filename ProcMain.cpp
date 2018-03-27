@@ -286,42 +286,81 @@ AI_PROCEDURAL_NODE_EXPORT_METHODS(AlembicLoaderMtd);
 
 node_parameters
 {
-   AiParameterStr("data", "");
+    AiParameterStr("filename", "");
+    AiParameterStr("nameprefix", "");
+    AiParameterStr("objectpath", "");
+    AiParameterFlt("frame", 0.0);
+    AiParameterFlt("frame_offset", 0.0);
+    AiParameterFlt("fps", 24.0);
+    AiParameterFlt("shutter_start", 0.0);
+    AiParameterFlt("shutter_end", 0.0);
+    AiParameterBool("exclude_xform", false);
+    AiParameterBool("make_instance", false);
+    AiParameterBool("flip_v", false);
+    AiParameterBool("invert_normals", false);
+
+    AiParameterStr("pattern", "*");
+    AiParameterStr("exclude_pattern", "");
+
+    AiParameterStr("overrides", "");
+    AiParameterStr("shader_assignation", "");
+    AiParameterStr("displacement_assignation", "");
+    AiParameterStr("overridefile", "");
+    AiParameterStr("shader_assignmentfile", "");
+    AiParameterStr("user_attributes", "");
+    AiParameterStr("user_attributesfile", "");
+
+    AiParameterStr("ass_shaders", "");
+
+    AiParameterBool("skipJson", false);
+    AiParameterBool("skipShaders", false);
+    AiParameterBool("skipOverrides", false);
+    AiParameterBool("skipDisplacements", false);
+    AiParameterBool("skipUserAttributes", false);
 }
 
 procedural_init
 {
-    ProcArgs * args = new ProcArgs( AiNodeGetStr( node, "data" ) );
-    args->proceduralNode = node;
-    *user_ptr = args;
 
-    if ( args->filename.empty() )
+
+    #if AI_VERSION_ARCH_NUM < 5
+        #error Arnold version 5.0+ required for AlembicArnoldProcedural
+    #endif
+
+    if (!AiCheckAPIVersion(AI_VERSION_ARCH, AI_VERSION_MAJOR, AI_VERSION_MINOR))
     {
-        args->usage();
+        AiMsgError( "bb_AlembicArnoldProcedural compiled with arnold-%s but is running with incompatible arnold-%s",
+                  AI_VERSION,  AiGetVersion(NULL, NULL, NULL, NULL));
         return 1;
     }
 
-    #if (AI_VERSION_ARCH_NUM == 3 && AI_VERSION_MAJOR_NUM < 3) || AI_VERSION_ARCH_NUM < 3
-        #error Arnold version 3.3+ required for AlembicArnoldProcedural
-    #endif
-    
-    if (!AiCheckAPIVersion(AI_VERSION_ARCH, AI_VERSION_MAJOR, AI_VERSION_MINOR))
+    ProcArgs * args = new ProcArgs( node );
+
+    AtNode* optionsNode = AiUniverseGetOptions();
+    if (optionsNode)
     {
-        std::cout << "bb_AlembicArnoldProcedural compiled with arnold-"
-                  << AI_VERSION
-                  << " but is running with incompatible arnold-"
-                  << AiGetVersion(NULL, NULL, NULL, NULL) << std::endl;
-        return 1;
-    } 
+
+        // If we are using the default shutter values we check if the scene camera has shutter values set
+        // and if so use them here. It should be safe here to compare to 0.0.
+        AtNode* cameraNode = reinterpret_cast<AtNode*>(AiNodeGetPtr(AiUniverseGetOptions(), "camera"));
+        if (cameraNode && args->shutterOpen == args->shutterClose)
+        {
+            // Get the shutter values from the scene camera
+            args->shutterOpen = AiNodeGetFlt(cameraNode, "shutter_start");
+            args->shutterClose = AiNodeGetFlt(cameraNode, "shutter_end");
+        }
+    }
+
+    *user_ptr = args;
 
     /* Load shaders file */
     // FIXME: is there a way of renaming the nodes from this load?
     //        if not maybe we should look in to having the shaders be in an abc file instead
 
     WriteLock w_lock(myLock);
-    if (AiNodeLookUpUserParameter(node, "assShaders") !=NULL )
+    if (args->assShaders !=NULL )
     {
-        const char* assfile = AiNodeGetStr(node, "assShaders");
+        const char* assfile = args->assShaders;
         if(*assfile != 0)
         {
 
@@ -342,13 +381,6 @@ procedural_init
     }
     w_lock.unlock();
 
-    bool skipJson = false;
-    bool skipShaders = false;
-    bool skipOverrides = false;
-    bool skipDisplacement = false;
-    bool skipUserAttributes = false;
-    if (AiNodeLookUpUserParameter(node, "skipJson") !=NULL )
-        skipJson = AiNodeGetBool(node, "skipJson");
     if (AiNodeLookUpUserParameter(node, "skipShaders") !=NULL )
         skipShaders = AiNodeGetBool(node, "skipShaders");
     if (AiNodeLookUpUserParameter(node, "skipOverrides") !=NULL )
@@ -368,11 +400,11 @@ procedural_init
     bool userAttributesJSONParsingSuccessful = false;
 
     // Load attribute overrides if there is a attribute present pointing to an overrides file
-    if (AiNodeLookUpUserParameter(node, "overridefile") !=NULL && skipJson == false)
+    if (args->overridefile !=NULL && args->skipJson == false)
     {
         Json::Value jroot;
         Json::Reader reader;
-        std::ifstream test(AiNodeGetStr(node, "overridefile").c_str(), std::ifstream::binary);
+        std::ifstream test(args->overridefile.c_str(), std::ifstream::binary);
         overridesJSONParsingSuccessful = reader.parse( test, jroot, false );
         if ( overridesJSONParsingSuccessful )
         {
@@ -380,12 +412,12 @@ procedural_init
             if(skipOverrides == false)
             {
                 jrootOverrides = jroot["overrides"];
-                if (AiNodeLookUpUserParameter(node, "overrides") !=NULL)
+                if (args->overrides !=NULL)
                 {
                     Json::Reader readerOverride;
                     Json::Value jrootOverridesOverrides;
 
-                    if(readerOverride.parse( AiNodeGetStr(node, "overrides").c_str(), jrootOverridesOverrides))
+                    if(readerOverride.parse( args->overrides.c_str(), jrootOverridesOverrides))
                     {
                         for( Json::ValueIterator itr = jrootOverridesOverrides.begin() ; itr != jrootOverridesOverrides.end() ; itr++ ) 
                         {
@@ -406,11 +438,11 @@ procedural_init
     }
 
     // Load attribute overrides if there is a attribute present pointing to an overrides file
-    if (AiNodeLookUpUserParameter(node, "userAttributesfile") !=NULL && skipJson == false)
+    if (args->userAttributesfile !=NULL && skipJson == false)
     {
         Json::Value jroot;
         Json::Reader reader;
-        std::ifstream test(AiNodeGetStr(node, "userAttributesfile").c_str(), std::ifstream::binary);
+        std::ifstream test(args->userAttributesfile.c_str(), std::ifstream::binary);
         userAttributesJSONParsingSuccessful = reader.parse( test, jroot, false );
         if ( userAttributesJSONParsingSuccessful )
         {
@@ -418,12 +450,12 @@ procedural_init
             if(skipOverrides == false)
             {
                 jrootUserAttributes = jroot["userAttributes"];
-                if (AiNodeLookUpUserParameter(node, "userAttributes") !=NULL)
+                if (args->userAttributes !=NULL)
                 {
                     Json::Reader readerOverride;
                     Json::Value jrootUserAttributesOverrides;
 
-                    if(readerOverride.parse( AiNodeGetStr(node, "userAttributes").c_str(), jrootUserAttributesOverrides))
+                    if(readerOverride.parse( args->userAttributes.c_str(), jrootUserAttributesOverrides))
                     {
                         for( Json::ValueIterator itr = jrootUserAttributesOverrides.begin() ; itr != jrootUserAttributesOverrides.end() ; itr++ ) 
                         {
@@ -440,11 +472,11 @@ procedural_init
         }
     }
     // Load shader assignments if there is a attribute present pointing to an shader assignments file
-    if (AiNodeLookUpUserParameter(node, "shaderAssignmentfile") !=NULL && skipJson == false)
+    if (args->shaderAssignmentfile !=NULL && skipJson == false)
     {
         Json::Value jroot;
         Json::Reader reader;
-        std::ifstream test(AiNodeGetStr(node, "shaderAssignmentfile").c_str(), std::ifstream::binary);
+        std::ifstream test(args->shaderAssignmentfile.c_str(), std::ifstream::binary);
         shaderJSONParsingSuccessful = reader.parse( test, jroot, false );
         if ( shaderJSONParsingSuccessful )
         {
@@ -453,11 +485,11 @@ procedural_init
             if(skipShaders == false)
             {
                 jrootShaders = jroot["shaders"];
-                if (AiNodeLookUpUserParameter(node, "shaderAssignation") !=NULL)
+                if (args->shaderAssignation !=NULL)
                 {
                     Json::Reader readerOverride;
                     Json::Value jrootShadersOverrides;
-                    if(readerOverride.parse( AiNodeGetStr(node, "shaderAssignation").c_str(), jrootShadersOverrides ))
+                    if(readerOverride.parse( args->shaderAssignation.c_str(), jrootShadersOverrides ))
                     {
                         if(jrootShadersOverrides.size() > 0)
                         {
@@ -510,11 +542,11 @@ procedural_init
             if(skipDisplacement == false)
             {
                 jrootDisplacements = jroot["displacement"];
-                if (AiNodeLookUpUserParameter(node, "displacementAssignation") !=NULL)
+                if (args->displacementAssignation !=NULL)
                 {
                     Json::Reader readerOverride;
                     Json::Value jrootDisplacementsOverrides;
-                    if(readerOverride.parse( AiNodeGetStr(node, "displacementAssignation").c_str(), jrootDisplacementsOverrides ))
+                    if(readerOverride.parse( args->displacementAssignation.c_str(), jrootDisplacementsOverrides ))
                     {
                         if(jrootDisplacementsOverrides.size() > 0)
                         {
@@ -566,30 +598,30 @@ procedural_init
     // Catch if the json data is in the optional attributes shaderAssignation,overrides,displacementAssignation
     // instead of parsing the two json files
     if(!overridesJSONParsingSuccessful)    
-        if (AiNodeLookUpUserParameter(node, "overrides") !=NULL  && skipOverrides == false)
+        if (args->overrides !=NULL  && skipOverrides == false)
         {
             Json::Reader reader;
-            bool parsingSuccessful = reader.parse( AiNodeGetStr(node, "overrides").c_str(), jrootOverrides );
+            bool parsingSuccessful = reader.parse( args->overrides.c_str(), jrootOverrides );
         }
 
     if(!userAttributesJSONParsingSuccessful)
-        if (AiNodeLookUpUserParameter(node, "userAttributes") !=NULL  && skipUserAttributes == false)
+        if (args->userAttributes !=NULL  && skipUserAttributes == false)
         {
             Json::Reader reader;
-            bool parsingSuccessful = reader.parse( AiNodeGetStr(node, "userAttributes").c_str(), jrootUserAttributes );
+            bool parsingSuccessful = reader.parse( args->userAttributes.c_str(), jrootUserAttributes );
         }
 
     if(!shaderJSONParsingSuccessful)
     {
-        if (AiNodeLookUpUserParameter(node, "shaderAssignation") !=NULL && skipShaders == false)
+        if (args->shaderAssignation !=NULL && skipShaders == false)
         {
             Json::Reader reader;
-            bool parsingSuccessful = reader.parse( AiNodeGetStr(node, "shaderAssignation").c_str(), jrootShaders );
+            bool parsingSuccessful = reader.parse( args->shaderAssignation.c_str(), jrootShaders );
         }
-        if (AiNodeLookUpUserParameter(node, "displacementAssignation") !=NULL  && skipDisplacement == false)
+        if (args->displacementAssignation !=NULL  && skipDisplacement == false)
         {
             Json::Reader reader;
-            bool parsingSuccessful = reader.parse( AiNodeGetStr(node, "displacementAssignation").c_str(), jrootDisplacements );
+            bool parsingSuccessful = reader.parse( args->displacementAssignation.c_str(), jrootDisplacements );
         }
     }
 
@@ -613,7 +645,6 @@ procedural_init
                 {
                     strs.pop_back();
                     strs.push_back(itr.key().asString());
-                        
                     shaderNode = AiNodeLookUpByName(boost::algorithm::join(strs, ":").c_str());
                 }
             }
@@ -655,7 +686,6 @@ procedural_init
                 {
                     strs.pop_back();
                     strs.push_back(itr.key().asString());
-                        
                     shaderNode = AiNodeLookUpByName(boost::algorithm::join(strs, ":").c_str());
                 }
             }
@@ -676,7 +706,7 @@ procedural_init
             }
         }
     }
-            
+
     if( jrootOverrides.size() > 0 )
     {
         args->linkOverride = true;
@@ -705,20 +735,18 @@ procedural_init
     }
 
     // Load the alembic file, cache it in a global cache if it hasn't been loaded before
-    
+
     w_lock.lock();
     IObject root;
 
-    // H5dont_atexit();
-    
     FileCache::iterator I = g_fileCache.find(args->filename);
     if (I != g_fileCache.end())
         root = (*I).second;
 
     else
     {
-        IFactory factory; 
-        IArchive archive = factory.getArchive(args->filename); 
+        IFactory factory;
+        IArchive archive = factory.getArchive(args->filename);
         if (!archive.valid())
         {
             AiMsgWarning ( "[ABC] Cannot read file %s for node \"%s\"", args->filename.c_str(), AiNodeGetName(node));
@@ -729,9 +757,8 @@ procedural_init
             g_fileCache[args->filename] = archive.getTop();
             root = archive.getTop();
         }
-        
     }
-    
+
     PathList path;
     TokenizePath( args->objectpath, path );
 
